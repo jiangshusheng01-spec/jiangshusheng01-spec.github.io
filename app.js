@@ -410,10 +410,14 @@ function stageProgressLine(){
  if(p)return `<div class="progress"><i style="width:${Math.round(p.done/p.total*100)}%"></i></div><p class="muted">本阶段已学完 ${p.done}/${p.total} 课</p>`;
  return `<p class="muted">本阶段：${stageGrowth(selectedStage)}</p>`;
 }
-function growthStrip(){
+function todayNext(){
  const g=growthCounts(),nx=growthNext();
  const pct=Math.round(g.completed/g.lessons*100);
- return `<section class="growth-strip"><div class="growth-stat"><strong>${g.completed}/${g.lessons} 课</strong><span>已学完的课</span></div><div class="growth-stat"><strong>${g.done}/${g.total} 个音</strong><span>已掌握（跨日证据）</span></div><div class="growth-stat"><strong>${g.due} 个</strong><span>待复习</span></div><div class="growth-stat"><strong>${g.last?new Date(g.last).toLocaleDateString('zh-CN'):'—'}</strong><span>最近一次练习</span></div></section><div class="growth-next"><div><strong>下一步</strong><p class="muted">${nx.label}</p></div><button class="primary" id="growth-next">开始 →</button></div><div class="progress"><i style="width:${pct}%"></i></div>`;
+ return `<div class="section-head"><h2>今天练什么</h2><span>已学完 ${g.completed}/${g.lessons} 课</span></div><div class="growth-next"><div><strong>下一步</strong><p class="muted">${nx.label}</p></div><button class="primary" id="growth-next">开始 →</button></div><div class="progress"><i style="width:${pct}%"></i></div>`;
+}
+function growthStatsHTML(){
+ const g=growthCounts();
+ return `<section class="growth-strip"><div class="growth-stat"><strong>${g.completed}/${g.lessons} 课</strong><span>已学完的课</span></div><div class="growth-stat"><strong>${g.done}/${g.total} 个音</strong><span>已掌握（跨日证据）</span></div><div class="growth-stat"><strong>${g.due} 个</strong><span>待复习</span></div><div class="growth-stat"><strong>${g.last?new Date(g.last).toLocaleDateString('zh-CN'):'—'}</strong><span>最近一次练习</span></div></section>`;
 }
 function growthNext(){
  const c=growthCounts();
@@ -431,7 +435,7 @@ function growthNext(){
  return {label,run:()=>startFoundation(3,phase,{lessonIndex:next})};
 }
 function foundationHome(){return `<section class="foundation-home"><div class="section-head"><h2>把基础，一步步练扎实</h2><span>四个阶段 · 全部开放</span></div><div class="stage-mini-grid">${foundationStages.map(st=>`<button class="stage-mini" data-open-stage="${st.id}"><span>${st.icon}</span><strong>${st.id}. ${st.title}</strong><small>${st.id===0?'先看看哪里需要补':'学 → 读 → 评 → 练'}</small><small class="stage-progress">${stageGrowth(st.id)}</small></button>`).join('')}</div></section>`}
-function courses(){const st=foundationStages[selectedStage];return `<div class="title-row"><div><div class="eyebrow">BUILD STRONG FOUNDATIONS</div><h1>基础四阶段</h1><p>只把字母音、听辨、合音和简单拼词练扎实。所有阶段都能自由进入。</p></div><span class="pill">学 · 读 · 评 · 练</span></div>${growthStrip()}<div class="stage-mini-grid">${foundationStages.map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.id}. ${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail"><div class="row"><div><span class="eyebrow">STAGE ${st.id}</span><h2>${st.title}</h2></div><span class="stage-icon">${st.icon}</span></div><p class="muted">${st.description}</p>${stageProgressLine()}${stageConfig()}${selectedStage===0?`<div class="notice">家长陪测。没有先教后考，也不靠重试猜对。不会可以直接选“需要练习”，结果只用来找起点。</div><button class="primary" data-phase="check">开始起点检查 · 16项 →</button>`:`${flowSteps('')}<div class="phase-grid">${Object.entries(phaseLabels).map(([key,label])=>`<button class="phase-card" data-phase="${key}"><b>${label}</b><strong>${{learn:'先看示范，弄明白方法',read:'录下来，自己读一读',check:'打乱检查，找出薄弱项',practice:'多种题型，反复巩固'}[key]}</strong><small>${{learn:'字母音 / 发音提示 / 分音与整词',read:'先独立读；听过示范会另行记录',check:'客观题自动核对，口头题家长判定',practice:'优先练不熟项，交替听辨、拼词、换音'}[key]}</small></button>`).join('')}</div>`}</section>${selectedStage===3?growthPath():''}`}
+function courses(){const st=foundationStages[selectedStage];return `<div class="title-row"><div><div class="eyebrow">BUILD STRONG FOUNDATIONS</div><h1>基础四阶段</h1><p>只把字母音、听辨、合音和简单拼词练扎实。所有阶段都能自由进入。</p></div><span class="pill">学 · 读 · 评 · 练</span></div>${todayNext()}${growthPath()}<div class="section-head"><h2>四个阶段</h2><span>点一个阶段，进去练</span></div><div class="stage-mini-grid">${foundationStages.map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.id}. ${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail"><div class="row"><div><span class="eyebrow">STAGE ${st.id}</span><h2>${st.title}</h2></div><span class="stage-icon">${st.icon}</span></div><p class="muted">${st.description}</p>${stageProgressLine()}${stageConfig()}${selectedStage===0?`<div class="notice">家长陪测。没有先教后考，也不靠重试猜对。不会可以直接选“需要练习”，结果只用来找起点。</div><button class="primary" data-phase="check">开始起点检查 · 16项 →</button>`:`${flowSteps('')}<div class="phase-grid">${Object.entries(phaseLabels).map(([key,label])=>`<button class="phase-card" data-phase="${key}"><b>${label}</b><strong>${{learn:'先看示范，弄明白方法',read:'录下来，自己读一读',check:'打乱检查，找出薄弱项',practice:'多种题型，反复巩固'}[key]}</strong><small>${{learn:'字母音 / 发音提示 / 分音与整词',read:'先独立读；听过示范会另行记录',check:'客观题自动核对，口头题家长判定',practice:'优先练不熟项，交替听辨、拼词、换音'}[key]}</small></button>`).join('')}</div>`}</section>`}
 function stageConfig(){if(selectedStage===1)return `<div class="scope-picker"><span>本次重点 · 分区选择</span>${soundGroups.map(group=>`<div class="focus-group"><strong>${group.title}</strong><div class="scope-buttons">${group.letters.filter(k=>['s','a','t','p','i','n'].includes(k)).map(k=>`<button class="small ${stageFocus===k?'primary':'secondary'}" data-focus="${k}">${k} /${sounds[k].ipa}/</button>`).join('')}</div></div>`).join('')}<div class="scope-buttons"><button class="small ${stageFocus==='all'?'primary':'secondary'}" data-focus="all">已学六个音综合练习</button></div></div><div class="lesson-phase-row"><span>第一组各课进度</span>${['s','a','t','p','i','n'].map(k=>{const st=letterGrowth(k);return `<span class="pill">${k} · ${st.label}</span>`}).join('')}</div>`;
  if(selectedStage===3)return `<label class="field">本次扩展基础课（按元音 / 辅音查找）<select id="expansion-lesson">${groupedLessons().map(group=>`<optgroup label="${group.title}${group.id==='vowels'?' · 短元音':''}">${group.items.filter(item=>item.index>=7).map(item=>`<option value="${item.index}" ${expansionLesson===item.index?'selected':''}>${item.letter} /${sounds[item.letter].ipa}/ · ${lessons[item.index].title}</option>`).join('')}</optgroup>`).join('')}</select></label><p class="muted">查学按类别分区；合音、拼词会组合此前已学的元音和辅音。第一组的 a、i 等可从下方分类课程进入。</p>`;return ''}
 
@@ -484,7 +488,7 @@ function finish(){
 }
 
 function evidenceTable(rows){return `<div class="table-wrap"><table><thead><tr><th>能力</th><th>检查项</th><th>独立完成</th><th>提示完成</th><th>还需练习</th><th>本次表现</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${r.total}</td><td>${r.independent}</td><td>${r.assisted}</td><td>${r.retry}</td><td>${esc(r.status)}</td></tr>`).join('')}</tbody></table></div>`}
-function progress(){const recent=state.foundationRecords.slice(-8).reverse();const rows=evaluateEvidence(state.foundationRecords.flatMap(x=>x.results||[]));return `<div class="title-row"><div><div class="eyebrow">EVIDENCE BEFORE SCORES</div><h1>基础能力档案</h1><p>听得出、自己会读、能够合音、能拼出来，分别记录。</p></div><button class="secondary small" id="export">导出学习记录 ↓</button></div><section class="panel"><h3>按能力看练习结果</h3>${rows.length?evidenceTable(rows):'<p class="muted">先做一次起点检查，了解孩子目前的基础。</p><button class="primary" data-open-stage="0">开始起点检查 →</button>'}<p class="muted">上表累计记录练习表现，不是发音分数，也不把单次正确当作掌握。</p></section><div class="section-head"><h2>最近的学—读—评—练</h2><span>最多显示最近8轮</span></div>${recent.map(r=>`<section class="panel history-entry"><div class="row"><strong>${foundationStages[r.stage]?.title||'基础练习'} · ${phaseLabels[r.phase]||'检查'}</strong><span class="muted">${new Date(r.at).toLocaleString('zh-CN')}</span></div>${r.rows.length?evidenceTable(r.rows):'<p class="muted">已听过示范，下一步自己读。</p>'}</section>`).join('')}<section class="panel" style="margin-top:20px"><h3>哪些内容值得隔天再检查？</h3><p class="muted">独立发音或合音至少有3次独立完成，且分布在2个不同日期，才显示“已有跨日证据”。这仍然不等同于专业发音评测。</p><div class="evidence-chips">${Object.entries(state.skillStats).filter(([k,v])=>k.endsWith('|speaking')||k.endsWith('|blending')||k.endsWith('|transfer')).map(([k,v])=>`<span class="pill">${esc(k.split('|')[0])} · ${v.independent>=3&&new Set(v.days).size>=2?'已有跨日证据':'继续巩固'}</span>`).join('')||'<span class="muted">等待独立读的记录</span>'}</div></section>`}
+function progress(){const recent=state.foundationRecords.slice(-8).reverse();const rows=evaluateEvidence(state.foundationRecords.flatMap(x=>x.results||[]));return `<div class="title-row"><div><div class="eyebrow">EVIDENCE BEFORE SCORES</div><h1>基础能力档案</h1><p>听得出、自己会读、能够合音、能拼出来，分别记录。</p></div><button class="secondary small" id="export">导出学习记录 ↓</button></div><div class="section-head"><h2>成长总览</h2><span>只看进度，不当作分数</span></div>${growthStatsHTML()}<section class="panel"><h3>按能力看练习结果</h3>${rows.length?evidenceTable(rows):'<p class="muted">先做一次起点检查，了解孩子目前的基础。</p><button class="primary" data-open-stage="0">开始起点检查 →</button>'}<p class="muted">上表累计记录练习表现，不是发音分数，也不把单次正确当作掌握。</p></section><div class="section-head"><h2>最近的学—读—评—练</h2><span>最多显示最近8轮</span></div>${recent.map(r=>`<section class="panel history-entry"><div class="row"><strong>${foundationStages[r.stage]?.title||'基础练习'} · ${phaseLabels[r.phase]||'检查'}</strong><span class="muted">${new Date(r.at).toLocaleString('zh-CN')}</span></div>${r.rows.length?evidenceTable(r.rows):'<p class="muted">已听过示范，下一步自己读。</p>'}</section>`).join('')}<section class="panel" style="margin-top:20px"><h3>哪些内容值得隔天再检查？</h3><p class="muted">独立发音或合音至少有3次独立完成，且分布在2个不同日期，才显示“已有跨日证据”。这仍然不等同于专业发音评测。</p><div class="evidence-chips">${Object.entries(state.skillStats).filter(([k,v])=>k.endsWith('|speaking')||k.endsWith('|blending')||k.endsWith('|transfer')).map(([k,v])=>`<span class="pill">${esc(k.split('|')[0])} · ${v.independent>=3&&new Set(v.days).size>=2?'已有跨日证据':'继续巩固'}</span>`).join('')||'<span class="muted">等待独立读的记录</span>'}</div></section>`}
 
 if(migrateLessonPhases())save();
 render();
@@ -498,11 +502,14 @@ function growthPath(){
  const order=alphabet.map(k=>({letter:k,index:lessons.findIndex(l=>l.newSounds.includes(k))})).filter(x=>x.index>=0).sort((a,b)=>a.index-b.index);
  const currentIdx=order.findIndex(({index})=>!state.completed.includes(index));
  const allDone=currentIdx<0;
+ const ROW=7,rows=[];
+ for(let i=0;i<order.length;i+=ROW)rows.push(order.slice(i,i+ROW));
  return `<div class="section-head"><h2>成长小路</h2><span>26 个字母，一步一步走过去</span></div>
  <p class="muted">亮起来的字母是已经会读的。点一个字母，就去练那一课。</p>
  <div class="growth-path">
  <div class="path-start">🚩 起点</div>
- <ol class="path-list">${order.map(({letter,index},i)=>{
+ ${rows.map((row,ri)=>`<div class="path-row${ri%2===1?' reverse':''}">${row.map(({letter,index})=>{
+  const i=order.findIndex(x=>x.index===index);
   const s=state.stats[letter];
   const mastered=s&&mastery(s);
   const phList=state.lessonPhases[index]||[];
@@ -511,19 +518,15 @@ function growthPath(){
   const isCurrent=i===currentIdx;
   const cls=mastered?'mastered':done?'done':phList.length>0?'partial':'todo';
   const dots=FOUR_PHASES.map(p=>`<i class="${phList.includes(p)?'on':''}"></i>`).join('');
-  return `<li class="path-stop ${cls}${isCurrent?' current':''}">
+  return `<div class="path-stop ${cls}${isCurrent?' current':''}">
    <button class="path-node" data-start="${index}" aria-label="第 ${index+1} 课 ${lessons[index].title}">
     <span class="path-letter">${letter}</span>
     ${mastered?'<span class="path-star">⭐</span>':''}
     ${due?'<span class="path-due" title="待复习"></span>':''}
    </button>
-   <div class="path-info">
-    ${isCurrent?'<span class="path-here">📍 你在这里</span>':''}
-    <strong>${lessons[index].title}</strong>
-    <small>${letter} /${sounds[letter].ipa}/</small>
-    <span class="path-dots" title="学 · 读 · 评 · 练">${dots}</span>
-   </div>
-  </li>`}).join('')}</ol>
+   ${isCurrent?'<span class="path-here">📍 你在这里</span>':''}
+   <span class="path-dots" title="学 · 读 · 评 · 练">${dots}</span>
+  </div>`}).join('')}</div>`).join('')}
  <div class="path-end">${allDone?'🎉 小路走完啦！26 个字母都会读了。':'🌳 走到路的尽头，26 个字母就都认识了。'}</div>
  </div>`;
 }

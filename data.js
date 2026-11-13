@@ -168,9 +168,10 @@ export function makeFoundationPlan(stage,phase,count=12,stats={},config={}){
 // 有记录：混 1 个新音（听辨引入）+ 最多 2 个到期/薄弱复习 + 1 个简单合音 + 补足到 planLength。
 // 出题与干扰项只用 knownAt(6)/wordsAt(6)，不越过家长设定的学习起点。
 export function buildTodayPlan(stats={}, skillStats={}, completed=[], lessonPhases={}, planLength=5, lesson=0){
- // 已学范围：家长设定的当前学习起点（state.lesson）之内的字母与词；新音是下一个未完成的第一组课的新音。
- // 计划的目标与干扰项只出自“已学范围 + 本轮新音”，不越过起点去推后面的音。
- const learnedLetters=knownAt(lesson), learnedWords=wordsAt(lesson);
+ // 已学范围：家长设定的当前学习起点（state.lesson）之内的字母与词，再加本轮新音。
+ // v5.15 只覆盖第一组：起点超过第 6 课也只算到第 6 课，不越过第一组去推后面的音。
+ const scopeLesson=Math.min(lesson,6);
+ const learnedLetters=knownAt(scopeLesson), learnedWords=wordsAt(scopeLesson);
  const firstGroupLessons=[0,1,2,4,5,6];
  let nextSound=null;
  for(const i of firstGroupLessons){
@@ -196,12 +197,14 @@ export function buildTodayPlan(stats={}, skillStats={}, completed=[], lessonPhas
  const blendCandidates=planWords.filter(w=>w.length===3);
  const blendWord=blendCandidates.find(w=>{const s=stats[w];return !s||s.independent<3})||blendCandidates[0];
  const out=[];
- if(nextSound) out.push(make(nextSound,'listen'));
+ // 新音先认识再听辨：teach 引入（看字母、听音），再用 listen 检查；不用 listen 直接考一个没学过的音。
+ if(nextSound){ out.push(make(nextSound,'teach')); out.push(make(nextSound,'listen')); }
+ // 简单合音紧跟新音：刚学的音马上用进词里（如刚学 p 就拼 pat）。
+ if(blendWord) out.push(make(blendWord,'blend'));
  dueOrWeak.slice(0,2).forEach((t,i)=>{
   const type=t.length===1?(i%2===0?'listen':'record'):(i%2===0?'record':'listen');
   out.push(make(t,type));
  });
- if(blendWord) out.push(make(blendWord,'blend'));
  // 补足到 planLength：已学字母的听辨，薄弱优先，不重复同一道听辨题
  const fillPool=[...learnedLetters].sort((a,b)=>(targetWeakness(a,stats,skillStats)?0:1)-(targetWeakness(b,stats,skillStats)?0:1));
  let fi=0;

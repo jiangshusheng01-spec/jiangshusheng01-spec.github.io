@@ -157,13 +157,13 @@ async function btBlend(){
   for(let i=0;i<btSlots.length;i++){
    const L=btSlots[i];if(!L)continue;
    slots[i]?.classList.add('lit');
-   await timed(L);
-   await new Promise(r=>setTimeout(r,220));
+   await timed(L+'_slow');
+   await new Promise(r=>setTimeout(r,400));
    slots[i]?.classList.remove('lit');
   }
-  await new Promise(r=>setTimeout(r,300));
+  await new Promise(r=>setTimeout(r,600));
   const ok=await Promise.race([playWord(word),new Promise(r=>setTimeout(()=>{stopAudio();r(false)},2500))]);
-  if(!ok){for(const L of btSlots){if(L)await timed(L)}}
+  if(!ok){for(const L of btSlots){if(L)await timed(L+'_slow')}}
   state.btHelp=(state.btHelp||0)+1;save();
   if(state.btHelp>=2&&!btHelpOpen){const h=$('#bt-help');if(h)h.style.display='none';const tg=$('#bt-help-toggle');if(tg)tg.textContent='玩法说明';}
  }finally{btPlaying=false}

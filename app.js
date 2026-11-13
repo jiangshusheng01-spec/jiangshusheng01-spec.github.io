@@ -118,7 +118,7 @@ if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(
 
 // ---------- 自由拼读台 ----------
 // 三个格子：开头音 + 元音 + 结尾音。孩子自己选字母，逐个点亮合音，不走固定题目。
-let btSlots=[null,null,null],btPlaying=false,btRec=null,btStream=null,btRecUrl=null,btRecBlob=null,btQuiz=false,btTarget=null,btHelpOpen=false,btComparing=false,btSelfAudio=null,btCompareDone=null,btTried=false,btBlendTimer=null;
+let btSlots=[null,null,null],btPlaying=false,btRec=null,btStream=null,btRecUrl=null,btRecBlob=null,btQuiz=false,btTarget=null,btHelpOpen=false,btComparing=false,btSelfAudio=null,btCompareDone=null,btTried=false,btBlendTimer=null,btHeardModel=false;
 function btWord(){return blendWord(btSlots)}
 function blendtable(){
  const known=new Set(knownAt(state.lesson));
@@ -126,12 +126,13 @@ function blendtable(){
  const word=btWord(),real=word.length>1&&isRealWord(word);
  const showHelp=btHelpOpen||(state.btHelp||0)<2;
  const board=soundGroups.map(g=>`<div class="bt-group"><strong>${g.title}</strong><div class="bt-board">${g.letters.map(k=>`<button class="bt-letter ${known.has(k)?'learned':''}" data-bt-letter="${k}">${k}<small>/${sounds[k].ipa}/</small></button>`).join('')}</div></div>`).join('');
- const resultHtml=btQuiz?'<span class="muted">自己拼一拼，读出来。</span>':(word.length>1?(real?`🎉 你拼出来了：${word}！<br>🌱 这个词真的存在：${meanings[word]}`:`🎉 你拼出来了：${word}！<br>这是你自创的词，拼读得一样对。`):'<span class="muted">点一个字母放进第一个格子。</span>');
+ const resultHtml=btQuiz?'<span class="muted">自己拼一拼，读出来。读完后由家长判断。</span>':(word.length>1?(real?`🎉 你拼出来了：${word}！<br>🌱 这个词真的存在：${meanings[word]}`:`🎉 你拼出来了：${word}！<br>这是你自创的词，拼读得一样对。`):'<span class="muted">点一个字母放进第一个格子。</span>');
  const controls=btQuiz?`
  <div class="bt-quiz-banner">${btBannerHtml()}</div>
  <div class="study-actions"><button class="primary" id="bt-record">🎙️ 我读一读</button><button class="secondary" id="bt-model">🔊 听听对不对</button></div>
- <div class="study-actions"><button class="primary" id="bt-ok">✅ 拼对了</button><button class="secondary" id="bt-retry">🔁 再练一次</button><button class="secondary" id="bt-next">⏭ 再考一个</button></div>
- <div class="study-actions"><button class="quiet small" id="bt-quiz-exit">退出考一考</button></div>`:`
+ <p class="muted">由家长判断：软件不自动打分，也没有接入发音评测。请先听孩子自己读（可以录音，也可以现场听），再选一项。</p>
+ <div class="study-actions"><button class="primary" id="bt-judge-independent">独立读出来了</button><button class="secondary" id="bt-judge-assisted">提示后读出来了</button><button class="secondary" id="bt-judge-retry">还需要练习</button></div>
+ <div class="study-actions"><button class="secondary" id="bt-next">⏭ 再考一个</button><button class="quiet small" id="bt-quiz-exit">退出考一考</button></div>`:`
  <div class="study-actions"><button class="primary" id="bt-blend">🔊 合起来</button><button class="secondary" id="bt-random">🎲 随便拼一个</button><button class="secondary" id="bt-clear">清空格子</button><button class="secondary" id="bt-quiz">📝 考一考</button></div>
  <div class="bt-swap"><span>换个元音试试：</span>${['a','e','i','o','u'].map(v=>`<button class="small ${btSlots[1]===v?'primary':'secondary'}" data-bt-vowel="${v}">${v} /${sounds[v].ipa}/</button>`).join('')}</div>
  <div class="study-actions"><button class="secondary" id="bt-record">🎙️ 我读一读</button><button class="secondary" id="bt-hear">🔊 再听示范</button></div>`;
@@ -188,13 +189,13 @@ function btPickTarget(){
  const pool=btQuizPool();
  let w=pool[Math.floor(Math.random()*pool.length)];
  if(w===btTarget&&pool.length>1)w=pool[(pool.indexOf(w)+1)%pool.length];
- btTarget=w;btSlots=w.split('');btTried=false;btRender();
+ btTarget=w;btSlots=w.split('');btTried=false;btHeardModel=false;btRender();
 }
 function btEnterQuiz(){
  if(btPlaying)return;
  btClearBlendTimer();
  if(btSlots.some(Boolean)&&!btSlots.every(Boolean)){toast('先把三个格子填满，再进考一考。');return}
- btQuiz=true;btTried=false;
+ btQuiz=true;btTried=false;btHeardModel=false;
  if(btSlots.every(Boolean)){btTarget=btWord();}
  else{const pool=btQuizPool();btTarget=pool[Math.floor(Math.random()*pool.length)];btSlots=btTarget.split('');}
  render();
@@ -205,7 +206,7 @@ function btRender(){
  document.querySelectorAll('.bt-slot').forEach((b,i)=>{b.textContent=btSlots[i]||'+'});
  const word=btWord(),real=word.length>1&&isRealWord(word);
  const wEl=$('#bt-word');if(wEl)wEl.textContent=word||'';
- const rEl=$('#bt-result');if(rEl)rEl.innerHTML=btQuiz?'<span class="muted">自己拼一拼，读出来。</span>':(word.length>1?(real?`🎉 你拼出来了：${word}！<br>🌱 这个词真的存在：${meanings[word]}`:`🎉 你拼出来了：${word}！<br>这是你自创的词，拼读得一样对。`):'<span class="muted">点一个字母放进第一个格子。</span>');
+ const rEl=$('#bt-result');if(rEl)rEl.innerHTML=btQuiz?'<span class="muted">自己拼一拼，读出来。读完后由家长判断。</span>':(word.length>1?(real?`🎉 你拼出来了：${word}！<br>🌱 这个词真的存在：${meanings[word]}`:`🎉 你拼出来了：${word}！<br>这是你自创的词，拼读得一样对。`):'<span class="muted">点一个字母放进第一个格子。</span>');
  document.querySelectorAll('[data-bt-vowel]').forEach(b=>{const on=btSlots[1]===b.dataset.btVowel;b.classList.toggle('primary',on);b.classList.toggle('secondary',!on)});
 }
 function bindBlendTable(){
@@ -230,9 +231,10 @@ function bindBlendTable(){
  $('#bt-quiz')?.addEventListener('click',btEnterQuiz);
  $('#bt-quiz-exit')?.addEventListener('click',btExitQuiz);
  $('#bt-help-toggle')?.addEventListener('click',()=>{btHelpOpen=!btHelpOpen;render();});
- $('#bt-model')?.addEventListener('click',()=>{if(btQuiz&&!btTried){toast('先自己读一次，再听示范。');return}btStopCompare();const w=btTarget||btWord();if(w)playWord(w);});
- $('#bt-ok')?.addEventListener('click',()=>{btStopCompare();const w=btTarget||btWord();if(!w)return;const rEl=$('#bt-result');if(rEl)rEl.innerHTML=isRealWord(w)?`🎉 对啦！${w} 是“${meanings[w]}”的意思，你自己拼出来了！`:`🎉 对啦！你自己拼出来了：${w}！`;playWord(w);});
- $('#bt-retry')?.addEventListener('click',()=>{const rEl=$('#bt-result');if(rEl)rEl.innerHTML='没关系，再试一次，慢慢来。想先听一遍，可以点“听听对不对”。';});
+ $('#bt-model')?.addEventListener('click',()=>{if(btQuiz&&!btTried){toast('先自己读一次，再听示范。');return}btStopCompare();const w=btTarget||btWord();if(w){btHeardModel=true;playWord(w)}});
+ $('#bt-judge-independent')?.addEventListener('click',()=>btJudge('independent'));
+ $('#bt-judge-assisted')?.addEventListener('click',()=>btJudge('assisted'));
+ $('#bt-judge-retry')?.addEventListener('click',()=>btJudge('retry'));
  $('#bt-next')?.addEventListener('click',()=>{btStopCompare();btPickTarget();});
  $('#bt-clear')?.addEventListener('click',()=>{if(btPlaying||btRec?.state==='recording')return;btClearBlendTimer();btSlots=[null,null,null];btRender()});
  $('#bt-hear')?.addEventListener('click',btBlend);
@@ -273,6 +275,42 @@ async function btAfterRecord(blob){
   const cmpWord=btTarget||btWord();
   if(h.ok&&cmpWord){btComparing=true;let a=null;try{await playWord(cmpWord);await new Promise(res=>setTimeout(res,250));a=new Audio(btRecUrl);btSelfAudio=a;safePlay(a).catch(()=>{});await new Promise(res=>{btCompareDone=res;a.onended=res;setTimeout(res,4000)})}finally{btComparing=false;btCompareDone=null;if(btSelfAudio===a)btSelfAudio=null}}
  }catch(e){if(s)s.textContent='录下来了，点播放听听自己读的。'}
+}
+// ---------- 考一考的判定由家长做 ----------
+// 软件不打分、不假装听懂。录音不是唯一方式，家长现场听也可以判；
+// 判定不用录音也能做。听过示范后再读的，记为“提示后”，与独立完成分开记；记录来源写“家长判断”。
+function btJudge(result){
+ const w=btTarget||btWord();if(!w)return;
+ btStopCompare();
+ let value=result;
+ if(result==='independent'&&btHeardModel)value='assisted';
+ const rEl=$('#bt-result');
+ const label={independent:'独立读出来了',assisted:'提示后读出来了',retry:'还需要练习'}[value];
+ const note=result==='independent'&&btHeardModel?'（已经听过示范，这次记为提示后读出来）':'';
+ const mean=isRealWord(w)?` · ${w} 是“${meanings[w]}”的意思`:'';
+ if(rEl)rEl.innerHTML=value==='retry'
+  ?`家长判断：还需要练习${mean}。<br><span class="muted">没关系，再练一次，慢慢来。想先听一遍，可以点“听听对不对”。</span>`
+  :`家长判断：${label}${note}<br><span class="muted">${w}${mean}</span>`;
+ btRecordQuizJudgment(w,value);
+ btTried=true;state.btLastPlay=Date.now();save();
+ const bn=document.querySelector('.bt-quiz-banner');if(bn)bn.innerHTML=btBannerHtml();
+}
+function btRecordQuizJudgment(word,value){
+ if(!state.stats)state.stats={};
+ if(!state.skillStats)state.skillStats={};
+ const now=Date.now(),independent=value==='independent';
+ let s=state.stats[word]||{attempts:0,correct:0,independent:0,assisted:0,days:[],daily:{},history:[]};
+ s.attempts++;s.correct+=value!=='retry'?1:0;s.independent+=independent?1:0;s.assisted+=value==='assisted'?1:0;
+ if(independent&&!s.days.includes(day()))s.days.push(day());
+ s.daily[day()]=(s.daily[day()]||0)+1;
+ s.history.push({at:now,result:value,source:'parent',type:'record'});s.history=s.history.slice(-100);
+ s.streak=independent?(s.streak||0)+1:0;
+ s.due=now+(independent?([1,2,4,7,14][Math.min(s.streak-1,4)]*86400000):300000);
+ s.last=now;s.lastResult=value;s.lastSkill='blending';state.stats[word]=s;
+ const sk=word+'|blending';const prev=state.skillStats[sk]||{attempts:0,independent:0,days:[]};
+ prev.attempts++;if(independent){prev.independent++;if(!prev.days.includes(day()))prev.days.push(day())}
+ prev.lastResult=value;prev.last=now;prev.due=s.due;state.skillStats[sk]=prev;
+ save();
 }
 async function btRecord(){
  if(btRec?.state==='recording'){btRec.stop();return}
@@ -394,7 +432,7 @@ function growthNext(){
 }
 function foundationHome(){return `<section class="foundation-home"><div class="section-head"><h2>把基础，一步步练扎实</h2><span>四个阶段 · 全部开放</span></div><div class="stage-mini-grid">${foundationStages.map(st=>`<button class="stage-mini" data-open-stage="${st.id}"><span>${st.icon}</span><strong>${st.id}. ${st.title}</strong><small>${st.id===0?'先看看哪里需要补':'学 → 读 → 评 → 练'}</small><small class="stage-progress">${stageGrowth(st.id)}</small></button>`).join('')}</div></section>`}
 function courses(){const st=foundationStages[selectedStage];return `<div class="title-row"><div><div class="eyebrow">BUILD STRONG FOUNDATIONS</div><h1>基础四阶段</h1><p>只把字母音、听辨、合音和简单拼词练扎实。所有阶段都能自由进入。</p></div><span class="pill">学 · 读 · 评 · 练</span></div>${growthStrip()}<div class="stage-mini-grid">${foundationStages.map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.id}. ${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail"><div class="row"><div><span class="eyebrow">STAGE ${st.id}</span><h2>${st.title}</h2></div><span class="stage-icon">${st.icon}</span></div><p class="muted">${st.description}</p>${stageProgressLine()}${stageConfig()}${selectedStage===0?`<div class="notice">家长陪测。没有先教后考，也不靠重试猜对。不会可以直接选“需要练习”，结果只用来找起点。</div><button class="primary" data-phase="check">开始起点检查 · 16项 →</button>`:`${flowSteps('')}<div class="phase-grid">${Object.entries(phaseLabels).map(([key,label])=>`<button class="phase-card" data-phase="${key}"><b>${label}</b><strong>${{learn:'先看示范，弄明白方法',read:'录下来，自己读一读',check:'打乱检查，找出薄弱项',practice:'多种题型，反复巩固'}[key]}</strong><small>${{learn:'字母音 / 发音提示 / 分音与整词',read:'先独立读；听过示范会另行记录',check:'客观题自动核对，口头题家长判定',practice:'优先练不熟项，交替听辨、拼词、换音'}[key]}</small></button>`).join('')}</div>`}</section>${selectedStage===3?groupedCourseCards():''}`}
-function stageConfig(){if(selectedStage===1)return `<div class="scope-picker"><span>本次重点 · 分区选择</span>${soundGroups.map(group=>`<div class="focus-group"><strong>${group.title}</strong><div class="scope-buttons">${group.letters.filter(k=>['s','a','t','p','i','n'].includes(k)).map(k=>`<button class="small ${stageFocus===k?'primary':'secondary'}" data-focus="${k}">${k} /${sounds[k].ipa}/</button>`).join('')}</div></div>`).join('')}<div class="scope-buttons"><button class="small ${stageFocus==='all'?'primary':'secondary'}" data-focus="all">已学六个音综合练习</button></div></div>`;
+function stageConfig(){if(selectedStage===1)return `<div class="scope-picker"><span>本次重点 · 分区选择</span>${soundGroups.map(group=>`<div class="focus-group"><strong>${group.title}</strong><div class="scope-buttons">${group.letters.filter(k=>['s','a','t','p','i','n'].includes(k)).map(k=>`<button class="small ${stageFocus===k?'primary':'secondary'}" data-focus="${k}">${k} /${sounds[k].ipa}/</button>`).join('')}</div></div>`).join('')}<div class="scope-buttons"><button class="small ${stageFocus==='all'?'primary':'secondary'}" data-focus="all">已学六个音综合练习</button></div></div><div class="lesson-phase-row"><span>第一组各课进度</span>${['s','a','t','p','i','n'].map(k=>{const st=letterGrowth(k);return `<span class="pill">${k} · ${st.label}</span>`}).join('')}</div>`;
  if(selectedStage===3)return `<label class="field">本次扩展基础课（按元音 / 辅音查找）<select id="expansion-lesson">${groupedLessons().map(group=>`<optgroup label="${group.title}${group.id==='vowels'?' · 短元音':''}">${group.items.filter(item=>item.index>=7).map(item=>`<option value="${item.index}" ${expansionLesson===item.index?'selected':''}>${item.letter} /${sounds[item.letter].ipa}/ · ${lessons[item.index].title}</option>`).join('')}</optgroup>`).join('')}</select></label><p class="muted">查学按类别分区；合音、拼词会组合此前已学的元音和辅音。第一组的 a、i 等可从下方分类课程进入。</p>`;return ''}
 
 function practice(){return `<div class="title-row"><div><div class="eyebrow">PRACTICE WITH A PURPOSE</div><h1>针对性练习</h1><p>选择范围后再练，不把后面的规则提前混进来。</p></div><span class="pill">每轮 ${state.length} 题</span></div><div class="stage-mini-grid">${foundationStages.slice(1).map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail">${stageConfig()}<h3>${foundationStages[selectedStage===0?1:selectedStage].title} · 巩固练习</h3><p class="muted">优先练习最近需要提示、尚未完成或到期的内容。听辨、录音、听音拼词和换音交替出现。</p><button class="primary" data-phase="practice">开始 ${state.length} 题专项练习 →</button></section><section style="margin-top:20px"><h3>随时查一个字母音</h3>${soundReference(true)}</section>`}

@@ -44,6 +44,7 @@
 .course .status.weak{color:#ad7453;font-weight:800}
 .course .status.learned{color:#63815a;font-weight:700}
 .course .status.partial{color:#63815a;font-weight:700}
+.lesson-phase-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px;font-size:12px;color:var(--muted)}
 .course .status.tried,.course .status.todo{color:#97a08e}
 .stage-mini small.stage-progress{color:#63815a;font-weight:700}
 @media(max-width:750px){.growth-strip{grid-template-columns:repeat(2,1fr)}}

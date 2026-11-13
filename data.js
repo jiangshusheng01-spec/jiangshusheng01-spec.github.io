@@ -97,6 +97,20 @@ export function foundationScope(stage,lessonIndex=7,focus='all'){
  const targets=stage===3?lessons[index].newSounds:letters;
  return {index,letters,targets:focus!=='all'&&targets.includes(focus)?[focus]:targets,words:wordsAt(index)};
 }
+// 一节课的四个环节：学、读、评、练。课的完成以四个环节都做完为准，完成不等于掌握。
+export const FOUR_PHASES=['learn','read','check','practice'];
+// 一次练习属于哪一课：stage 3 的课号就是 scope.index；stage 2 是 at 课（第 4 课，index 3）；
+// stage 1/2 的 scope.index 恒为 6，不能当课号，阶段 1 按 focus 字母对应的课算；
+// 阶段 0 是起点检查、阶段 1 的综合练习（focus 为 all）不属于某一课，返回 null。
+export function lessonForSession(stage,lesson,focus){
+ if(stage===3&&Number.isInteger(lesson))return lesson;
+ if(stage===2)return 3;
+ if(stage===1&&focus&&focus!=='all'){
+  const idx=lessons.findIndex(l=>l.newSounds.includes(focus));
+  if(idx>=0)return idx;
+ }
+ return null;
+}
 export function taskSkill(task){return task.skill||({listen:'listening',record:task.target.length===1?'speaking':'blending',spell:'segmenting',swap:'changing',oralblend:'blending',namekind:'naming',firstsound:'listening'})[task.type]||'speaking'}
 export function taskOptions(target,pool){return shuffle([target,...shuffle(pool.filter(x=>x!==target)).slice(0,3)])}
 export function makeFoundationPlan(stage,phase,count=12,stats={},config={}){

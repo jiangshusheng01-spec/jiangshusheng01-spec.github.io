@@ -43,6 +43,7 @@
 .course .status.due{color:#9a6b1f;font-weight:800}
 .course .status.weak{color:#ad7453;font-weight:800}
 .course .status.learned{color:#63815a;font-weight:700}
+.course .status.partial{color:#63815a;font-weight:700}
 .course .status.tried,.course .status.todo{color:#97a08e}
 .stage-mini small.stage-progress{color:#63815a;font-weight:700}
 @media(max-width:750px){.growth-strip{grid-template-columns:repeat(2,1fr)}}

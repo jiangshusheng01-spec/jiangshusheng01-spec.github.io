@@ -1,8 +1,8 @@
-import {unitEvidenceReady,nextFoundationRoute,soundGroups,soundGroupFor,groupedLessons,targetWeakness,requiresQuestionAudio,recordingNeedsHelp,foundationStages,skillNames,foundationScope,makeFoundationPlan,taskSkill,evaluateEvidence,alphabet,sounds,lessons,meanings,knownAt,wordsAt,shuffle,mastery,plan,blendWord,isRealWord,mouthShapes,sosVideos} from './data.js';
+import {unitEvidenceReady,nextFoundationRoute,soundGroups,soundGroupFor,groupedLessons,targetWeakness,requiresQuestionAudio,recordingNeedsHelp,foundationStages,skillNames,foundationScope,makeFoundationPlan,taskSkill,evaluateEvidence,alphabet,sounds,lessons,meanings,knownAt,wordsAt,shuffle,mastery,plan,blendWord,isRealWord,mouthShapes,sosVideos,FOUR_PHASES,lessonForSession} from './data.js';
 const $=s=>document.querySelector(s),app=$('#app');
 const KEY='little-sprout-v1';
 let selectedStage=1,stageFocus='s',expansionLesson=7;
-const defaults={autoContinue:true,unitProgress:{},foundationRecords:[],skillStats:{},exposed:[],name:'小芽',lesson:0,completed:[],stats:{},sessions:[],length:12,voice:true,btHelp:0};
+const defaults={autoContinue:true,unitProgress:{},foundationRecords:[],skillStats:{},exposed:[],name:'小芽',lesson:0,completed:[],lessonPhases:{},stats:{},sessions:[],length:12,voice:true,btHelp:0};
 let state;try{state={...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{state={...defaults}}
 let paused=null,autoTimer=null,autoLaunch=null;
 let page='home',session=null,questionIndex=0,locked=false,hinted=false,failed=false,spell=[],recorder=null,stream=null,recordUrl=null,recordBlob=null,recordTimer=null,recordStarted=0,recordBusy=false,playing=null,playingDone=null,speechDone=null,playVersion=0,audioDB=null,apiStatus={deepseek:false};
@@ -110,7 +110,7 @@ function showLibrary(){const m=modal(`<h2>按类别查发音</h2><p>元音与辅
 function audioManager(){const m=modal(`<h2>字母音示范管理</h2><p>导入经确认的短音频（MP3、M4A 或 WAV，单个不超过 2MB）。只保存在当前设备；换设备需要重新导入。</p><div style="max-height:40vh;overflow:auto">${Object.keys(sounds).map(k=>`<div class="sound-tile-upload"><strong>${k}</strong><button class="small" data-audio-test="${k}">试听</button><input type="file" accept="audio/*" aria-label="导入${k}的字母音" data-audio-upload="${k}"></div>`).join('')}</div><button class="secondary" data-close>完成</button>`);m.querySelectorAll('[data-audio-test]').forEach(b=>b.onclick=()=>playSound(b.dataset.audioTest));m.querySelectorAll('[data-audio-upload]').forEach(b=>b.onchange=async()=>{const f=b.files[0];if(!f)return;if(f.size>2*1024*1024||!f.type.startsWith('audio/')){toast('请选择 2MB 以内的音频文件');return}try{await audioPut(b.dataset.audioUpload,f);toast('已保存，本机将优先使用此示范音')}catch{toast('音频保存失败，请检查浏览器存储权限')}})}
 async function askAI(){if(!/^https?:$/.test(location.protocol)){toast('单文件测试版尚未连接AI服务。当前可以体验学习、录音回放与家长评估。');return}if(!$('#ai-consent').checked){toast('请先确认本次发送学习统计');return}const b=$('#ask-ai'),out=$('#ai-output');b.disabled=true;out.textContent='正在整理建议……';try{const r=await fetch('/api/coach',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lesson:state.lesson,stats:Object.entries(state.stats).slice(0,120).map(([target,s])=>({target,attempts:s.attempts,independent:s.independent,assisted:s.assisted,correct:s.correct}))})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'陪学建议服务未配置，当前可以体验学习、录音回放与家长评估。');out.textContent=d.advice||'暂时无法生成建议'}catch(e){out.textContent=e.message}finally{b.disabled=false}}
 function exportData(){const blob=new Blob([JSON.stringify({version:1,...state},null,2)],{type:'application/json'}),u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=`sprout-progress-${day()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
-async function importData(e){const f=e.target.files[0];if(!f)return;if(f.size>2e6){toast('文件太大，请选择导出的学习记录');return}try{const d=JSON.parse(await f.text());if(d.version!==1||!Number.isInteger(d.lesson)||d.lesson<0||d.lesson>=lessons.length||!Array.isArray(d.completed)||!d.stats||typeof d.stats!=='object'||Array.isArray(d.stats)||!Array.isArray(d.sessions)||d.sessions.length>200||typeof d.name!=='string'||d.name.length>20||![8,12,20,30].includes(d.length))throw Error();for(const [k,s]of Object.entries(d.stats)){if(!/^[a-z]{1,5}$/.test(k)||![s.attempts,s.correct,s.independent,s.assisted].every(n=>Number.isFinite(n)&&n>=0)||!Array.isArray(s.days)||!s.daily||typeof s.daily!=='object'||!Array.isArray(s.history))throw Error()}const m=modal('<h2>恢复学习记录？</h2><p>将用备份中的学习记录替换当前记录。示范音频不会改变。请先导出当前记录留作备份。</p><div class="study-actions"><button class="secondary" data-close>取消</button><button id="restore-confirm" class="primary">恢复备份</button></div>');$('#restore-confirm').onclick=()=>{state={autoContinue:d.autoContinue!==false,unitProgress:d.unitProgress&&typeof d.unitProgress==='object'?d.unitProgress:{},foundationRecords:Array.isArray(d.foundationRecords)?d.foundationRecords.slice(-300):[],skillStats:d.skillStats&&typeof d.skillStats==='object'?d.skillStats:{},exposed:Array.isArray(d.exposed)?d.exposed.filter(x=>typeof x==='string'&&/^[a-z]{1,5}$/.test(x)):[],name:d.name,lesson:d.lesson,completed:d.completed.filter(i=>Number.isInteger(i)&&i>=0&&i<lessons.length),stats:d.stats,sessions:d.sessions,length:d.length,voice:!!d.voice};save();m.close();render();toast('学习记录已恢复')}}catch{toast('记录格式不正确，请选择本软件导出的 JSON 文件')}}
+async function importData(e){const f=e.target.files[0];if(!f)return;if(f.size>2e6){toast('文件太大，请选择导出的学习记录');return}try{const d=JSON.parse(await f.text());if(d.version!==1||!Number.isInteger(d.lesson)||d.lesson<0||d.lesson>=lessons.length||!Array.isArray(d.completed)||!d.stats||typeof d.stats!=='object'||Array.isArray(d.stats)||!Array.isArray(d.sessions)||d.sessions.length>200||typeof d.name!=='string'||d.name.length>20||![8,12,20,30].includes(d.length))throw Error();for(const [k,s]of Object.entries(d.stats)){if(!/^[a-z]{1,5}$/.test(k)||![s.attempts,s.correct,s.independent,s.assisted].every(n=>Number.isFinite(n)&&n>=0)||!Array.isArray(s.days)||!s.daily||typeof s.daily!=='object'||!Array.isArray(s.history))throw Error()}const m=modal('<h2>恢复学习记录？</h2><p>将用备份中的学习记录替换当前记录。示范音频不会改变。请先导出当前记录留作备份。</p><div class="study-actions"><button class="secondary" data-close>取消</button><button id="restore-confirm" class="primary">恢复备份</button></div>');$('#restore-confirm').onclick=()=>{state={autoContinue:d.autoContinue!==false,unitProgress:d.unitProgress&&typeof d.unitProgress==='object'?d.unitProgress:{},foundationRecords:Array.isArray(d.foundationRecords)?d.foundationRecords.slice(-300):[],skillStats:d.skillStats&&typeof d.skillStats==='object'?d.skillStats:{},exposed:Array.isArray(d.exposed)?d.exposed.filter(x=>typeof x==='string'&&/^[a-z]{1,5}$/.test(x)):[],name:d.name,lesson:d.lesson,completed:d.completed.filter(i=>Number.isInteger(i)&&i>=0&&i<lessons.length),lessonPhases:sanitizeLessonPhases(d.lessonPhases),stats:d.stats,sessions:d.sessions,length:d.length,voice:!!d.voice};migrateLessonPhases();save();m.close();render();toast('学习记录已恢复')}}catch{toast('记录格式不正确，请选择本软件导出的 JSON 文件')}}
 window.addEventListener('pagehide',()=>{clearAutoContinue();clearRecording();stopAudio()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&autoTimer)pauseAutoContinue('已切到后台，连续学习已暂停。')});
 fetch('/api/status').then(r=>r.json()).then(s=>{apiStatus=s;if(page==='parents'&&!session)render()}).catch(()=>{});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
@@ -297,6 +297,43 @@ const phaseLabels={learn:'学',read:'读',check:'评',practice:'练'};
 function flowSteps(phase){return `<div class="flow-steps" aria-label="学读评练流程">${Object.entries(phaseLabels).map(([k,v])=>`<span class="${phase===k?'current':''}"><b>${v}</b>${{learn:'听懂示范',read:'自己开口',check:'看清薄弱项',practice:'针对性巩固'}[k]}</span>`).join('')}</div>`}
 // ---------- 成长可见 ----------
 // 只把已有的练习记录翻出来显示，不改任何掌握标准与教学逻辑。
+// 旧记录迁移：v5.8 之前“学完”只按“学”环节记，而且阶段 1/2 的课号恒为 6，记到的课是错的。
+// 新格式下 completed 与 lessonPhases 必然一致；不一致说明是旧记录或损坏记录，重建。
+// 能核实的才留：阶段 2/3 的学/读/评按课号留，阶段 3 的“练”分不清是单课练习还是多课复习，不留；
+// 旧 completed 里 7–26 号是阶段 3 的“学”，只算“学”；0–6 号无法对应到具体哪一课，丢弃。
+// 迁移后 completed 只保留四环节齐全的课；其余环节要重新练一遍才算。
+function migrateLessonPhases(){
+ const lp=state.lessonPhases&&typeof state.lessonPhases==='object'?state.lessonPhases:null;
+ if(lp&&state.completed.every(l=>(lp[l]||[]).length===4))return false;
+ const rebuilt={};
+ const mark=(lesson,phase)=>{
+  if(!Number.isInteger(lesson)||lesson<0||lesson>=lessons.length)return;
+  if(!['learn','read','check'].includes(phase))return;
+  const a=rebuilt[lesson]||(rebuilt[lesson]=[]);
+  if(!a.includes(phase))a.push(phase);
+ };
+ if(lp)for(const [k,a]of Object.entries(lp)){const idx=+k;if(Number.isInteger(idx)&&idx>=0&&idx<lessons.length&&Array.isArray(a))for(const p of a)mark(idx,p)}
+ for(const s of state.sessions||[]){
+  if(!s)continue;
+  if(s.stage===2)mark(3,s.phase);
+  else if(s.stage===3)mark(s.lesson,s.phase);
+ }
+ for(const l of state.completed||[]){if(Number.isInteger(l)&&l>=7&&l<lessons.length)mark(l,'learn')}
+ state.lessonPhases=rebuilt;
+ state.completed=Object.keys(rebuilt).map(Number).filter(l=>FOUR_PHASES.every(p=>rebuilt[l].includes(p)));
+ return true;
+}
+function sanitizeLessonPhases(v){
+ if(!v||typeof v!=='object'||Array.isArray(v))return undefined;
+ const out={};
+ for(const [k,a]of Object.entries(v)){
+  const idx=+k;
+  if(!Number.isInteger(idx)||idx<0||idx>=lessons.length||!Array.isArray(a))continue;
+  const phases=[...new Set(a.filter(p=>FOUR_PHASES.includes(p)))];
+  if(phases.length)out[idx]=phases;
+ }
+ return out;
+}
 function reviewTargets(){
  const candidates=[...knownAt(lessons.length-1),...wordsAt(lessons.length-1)];
  return candidates.filter(t=>state.stats[t]&&(targetWeakness(t,state.stats,state.skillStats)||(state.stats[t].due||0)<=Date.now()));
@@ -314,7 +351,8 @@ function letterGrowth(letter){
  if(s&&mastery(s))return {k:'done',label:'✓ 已掌握'};
  if(s&&s.due&&s.due<=Date.now())return {k:'due',label:'⏰ 待复习'};
  if(s&&targetWeakness(letter,state.stats,state.skillStats))return {k:'weak',label:'需巩固'};
- if(idx>=0&&state.completed.includes(idx))return {k:'learned',label:'✓ 已学过'};
+ if(idx>=0&&state.completed.includes(idx))return {k:'learned',label:'✓ 已完成'};
+ if(idx>=0){const n=(state.lessonPhases[idx]||[]).length;if(n>0)return {k:'partial',label:`已完成 ${n}/4 环节`}}
  if(s&&s.attempts>0)return {k:'tried',label:'练过'};
  return {k:'todo',label:'未开始'};
 }
@@ -345,11 +383,14 @@ function growthNext(){
  const next=lessons.findIndex((l,i)=>!state.completed.includes(i));
  if(next<0)return {label:'全部课程已学完 · 去看能力档案',run:()=>nav('progress')};
  const lesson=lessons[next];
+ const done=state.lessonPhases[next]||[];
+ const phase=FOUR_PHASES.find(p=>!done.includes(p))||'learn';
+ const label=`继续第 ${next+1} 课：${lesson.title} · ${phaseLabels[phase]}环节`;
  if(next<=6){
-  if(lesson.newSounds.length)return {label:`继续第 ${next+1} 课：${lesson.title}`,run:()=>startFoundation(1,'learn',{focus:lesson.newSounds[0]})};
-  return {label:`继续第 ${next+1} 课：${lesson.title}`,run:()=>startFoundation(2,'learn',{})};
+  if(lesson.newSounds.length)return {label,run:()=>startFoundation(1,phase,{focus:lesson.newSounds[0]})};
+  return {label,run:()=>startFoundation(2,phase,{})};
  }
- return {label:`继续第 ${next+1} 课：${lesson.title}`,run:()=>startFoundation(3,'learn',{lessonIndex:next})};
+ return {label,run:()=>startFoundation(3,phase,{lessonIndex:next})};
 }
 function foundationHome(){return `<section class="foundation-home"><div class="section-head"><h2>把基础，一步步练扎实</h2><span>四个阶段 · 全部开放</span></div><div class="stage-mini-grid">${foundationStages.map(st=>`<button class="stage-mini" data-open-stage="${st.id}"><span>${st.icon}</span><strong>${st.id}. ${st.title}</strong><small>${st.id===0?'先看看哪里需要补':'学 → 读 → 评 → 练'}</small><small class="stage-progress">${stageGrowth(st.id)}</small></button>`).join('')}</div></section>`}
 function courses(){const st=foundationStages[selectedStage];return `<div class="title-row"><div><div class="eyebrow">BUILD STRONG FOUNDATIONS</div><h1>基础四阶段</h1><p>只把字母音、听辨、合音和简单拼词练扎实。所有阶段都能自由进入。</p></div><span class="pill">学 · 读 · 评 · 练</span></div>${growthStrip()}<div class="stage-mini-grid">${foundationStages.map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.id}. ${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail"><div class="row"><div><span class="eyebrow">STAGE ${st.id}</span><h2>${st.title}</h2></div><span class="stage-icon">${st.icon}</span></div><p class="muted">${st.description}</p>${stageProgressLine()}${stageConfig()}${selectedStage===0?`<div class="notice">家长陪测。没有先教后考，也不靠重试猜对。不会可以直接选“需要练习”，结果只用来找起点。</div><button class="primary" data-phase="check">开始起点检查 · 16项 →</button>`:`${flowSteps('')}<div class="phase-grid">${Object.entries(phaseLabels).map(([key,label])=>`<button class="phase-card" data-phase="${key}"><b>${label}</b><strong>${{learn:'先看示范，弄明白方法',read:'录下来，自己读一读',check:'打乱检查，找出薄弱项',practice:'多种题型，反复巩固'}[key]}</strong><small>${{learn:'字母音 / 发音提示 / 分音与整词',read:'先独立读；听过示范会另行记录',check:'客观题自动核对，口头题家长判定',practice:'优先练不熟项，交替听辨、拼词、换音'}[key]}</small></button>`).join('')}</div>`}</section>${selectedStage===3?groupedCourseCards():''}`}
@@ -358,7 +399,9 @@ function stageConfig(){if(selectedStage===1)return `<div class="scope-picker"><s
 
 function practice(){return `<div class="title-row"><div><div class="eyebrow">PRACTICE WITH A PURPOSE</div><h1>针对性练习</h1><p>选择范围后再练，不把后面的规则提前混进来。</p></div><span class="pill">每轮 ${state.length} 题</span></div><div class="stage-mini-grid">${foundationStages.slice(1).map(t=>`<button class="stage-mini ${t.id===selectedStage?'selected':''}" data-stage="${t.id}"><span>${t.icon}</span><strong>${t.title}</strong><small>${t.range}</small><small class="stage-progress">${stageGrowth(t.id)}</small></button>`).join('')}</div><section class="panel stage-detail">${stageConfig()}<h3>${foundationStages[selectedStage===0?1:selectedStage].title} · 巩固练习</h3><p class="muted">优先练习最近需要提示、尚未完成或到期的内容。听辨、录音、听音拼词和换音交替出现。</p><button class="primary" data-phase="practice">开始 ${state.length} 题专项练习 →</button></section><section style="margin-top:20px"><h3>随时查一个字母音</h3>${soundReference(true)}</section>`}
 function bindFoundation(){document.querySelectorAll('[data-open-stage]').forEach(b=>b.onclick=()=>{selectedStage=+b.dataset.openStage;stageFocus=selectedStage===1?'s':'all';nav('courses')});document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{selectedStage=+b.dataset.stage;stageFocus=selectedStage===1?'s':'all';render()});document.querySelectorAll('[data-focus]').forEach(b=>b.onclick=()=>{stageFocus=b.dataset.focus;render()});document.querySelectorAll('[data-expansion]').forEach(b=>b.onclick=()=>{selectedStage=3;expansionLesson=+b.dataset.expansion;render();window.scrollTo(0,0)});$('#expansion-lesson')?.addEventListener('change',e=>{expansionLesson=+e.target.value;render()});document.querySelectorAll('[data-phase]').forEach(b=>b.onclick=()=>startFoundation(selectedStage===0&&page==='practice'?1:selectedStage,b.dataset.phase));$('#growth-next')?.addEventListener('click',()=>{const a=growthNext();a.run()});}
-function startFoundation(stage,phase,options={}){clearAutoContinue();selectedStage=stage;if(options.focus!==undefined)stageFocus=options.focus;if(options.lessonIndex!==undefined)expansionLesson=options.lessonIndex;if(paused){const m=modal('<h2>开始新一轮练习？</h2><p>之前已答题的记录会保留，暂停的那一轮将结束。</p><div class="study-actions"><button class="secondary" data-close>返回</button><button class="primary" id="new-flow">开始新一轮</button></div>');$('#new-flow').onclick=()=>{paused=null;m.close();startFoundation(stage,phase,options)};return}stopAudio();const scope=foundationScope(stage,options.reviewTargets?lessons.length-1:expansionLesson,stageFocus);const config={lessonIndex:scope.index,focus:stageFocus,seen:state.exposed,skillStats:state.skillStats,...options};const questions=makeFoundationPlan(stage,phase,state.length,state.stats,config);if(!questions.length){toast('当前范围暂无可练内容，请选择其他课程。');return}state.lesson=scope.index;save();session={stage,phase,config,lesson:scope.index,mode:'foundation',questions,results:[]};questionIndex=0;resetQuestion();render();window.scrollTo(0,0);readPrompt()}
+function startFoundation(stage,phase,options={}){clearAutoContinue();selectedStage=stage;if(options.focus!==undefined)stageFocus=options.focus;if(options.lessonIndex!==undefined)expansionLesson=options.lessonIndex;if(paused){const m=modal('<h2>开始新一轮练习？</h2><p>之前已答题的记录会保留，暂停的那一轮将结束。</p><div class="study-actions"><button class="secondary" data-close>返回</button><button class="primary" id="new-flow">开始新一轮</button></div>');$('#new-flow').onclick=()=>{paused=null;m.close();startFoundation(stage,phase,options)};return}stopAudio();const scope=foundationScope(stage,options.reviewTargets?lessons.length-1:expansionLesson,stageFocus);const config={lessonIndex:scope.index,focus:stageFocus,seen:state.exposed,skillStats:state.skillStats,...options};const questions=makeFoundationPlan(stage,phase,state.length,state.stats,config);if(!questions.length){toast('当前范围暂无可练内容，请选择其他课程。');return}// 学习起点只由“学”环节向前推进；进练习/复习不改变它。阶段 1 按字母对应的课算（scope.index 恒为 6，不可用）。
+if(phase==='learn'){const li=lessonForSession(stage,scope.index,stageFocus);if(li!=null&&li>state.lesson)state.lesson=li}
+save();session={stage,phase,config,lesson:scope.index,mode:'foundation',questions,results:[]};questionIndex=0;resetQuestion();render();window.scrollTo(0,0);readPrompt()}
 function markExposure(target){if(target.length>1&&!state.exposed.includes(target)){state.exposed.push(target);save()}}
 function foundationBody(x,body){
  if(x.type==='namekind')return `<div class="huge-letter">${x.target.toUpperCase()} ${x.target}</div><button id="hear" class="sound-button" aria-label="听题目声音">🔊</button><p class="muted">听一听：这是字母的名称，还是在单词中的音？</p><div class="choices"><button class="secondary" data-kind="name">字母名称</button><button class="secondary" data-kind="sound">字母音</button></div><div class="feedback" id="feedback" aria-live="polite"></div><button id="next" class="primary" hidden>下一项 →</button>`;
@@ -378,14 +421,23 @@ function finish(){
  const s=session;clearAutoContinue();clearRecording();stopAudio();
  const valid=s.results.filter(r=>!r.skip),rows=evaluateEvidence(valid);
  state.sessions.push({at:Date.now(),stage:s.stage,phase:s.phase,lesson:s.lesson,mode:s.mode,count:valid.length,independent:valid.filter(r=>r.result==='independent').length});state.sessions=state.sessions.slice(-200);
- state.foundationRecords.push({stage:s.stage,phase:s.phase,at:Date.now(),rows,results:s.results});state.foundationRecords=state.foundationRecords.slice(-100);
- if(s.phase==='learn'&&!state.completed.includes(s.lesson))state.completed.push(s.lesson);
+ // 本课的环节完成情况：起点检查（阶段 0）与多课复习不属于某一课，不记；四环节齐了才算本课完成。
+ const li=s.config?.reviewTargets||s.stage===0?null:lessonForSession(s.stage,s.lesson,s.config?.focus);
+ state.foundationRecords.push({stage:s.stage,phase:s.phase,lesson:li,at:Date.now(),rows,results:s.results});state.foundationRecords=state.foundationRecords.slice(-100);
+ if(li!=null&&FOUR_PHASES.includes(s.phase)){
+  if(!state.lessonPhases||typeof state.lessonPhases!=='object')state.lessonPhases={};
+  const list=state.lessonPhases[li]||(state.lessonPhases[li]=[]);
+  if(!list.includes(s.phase))list.push(s.phase);
+  if(list.length===4&&!state.completed.includes(li))state.completed.push(li);
+ }
  const route=nextFoundationRoute(s,state.skillStats),ready=unitEvidenceReady(s,state.skillStats);
  if(s.phase==='practice'&&ready){const key=s.stage+':'+(s.stage===3?s.config.lessonIndex:s.config.focus||'all');state.unitProgress[key]={at:Date.now(),status:'本轮具备进入下一项的证据'};}
  save();session=null;page='courses';selectedStage=s.stage;
  const weak=[...new Set(valid.filter(r=>r.result!=='independent').map(r=>r.target))];
  const advice=s.phase==='learn'?'听过示范不代表已经掌握。接下来先自己开口，再作评估。':route.kind==='retry'?'当前仍有薄弱项、跳过项或独立完成记录不足，建议先补练。':route.kind==='unit'?'本轮具备进入下一项的记录，之后仍会安排跨日复习。':route.kind==='complete'?'基础四阶段的流程已走完，可以继续复习；长期掌握仍需要跨日检查。':'按学、读、评、练继续，不把完成题量当作掌握。';
- app.innerHTML=shell(`<section class="panel summary"><div class="plant">${ready?'🌳':'🌱'}</div><span class="pill">${foundationStages[s.stage].title} · ${s.stage===0?'起点检查':phaseLabels[s.phase]}</span><h1>${s.phase==='learn'?'学过了，轮到自己读':route.kind==='unit'?'这一小步完成，接着往前走':'先看看这一步的表现'}</h1><p class="muted">${advice}</p><p class="muted">本轮记录 ${valid.length} 项，跳过 ${s.results.length-valid.length} 项。口头结果来自家长判定，自动发音评分尚未接入。</p>${rows.length?evidenceTable(rows):''}${weak.length?`<div class="message" style="text-align:left;margin:20px 0">建议重点练：${weak.join('、')}。<br>下一轮会优先选这些内容，并变换题型。</div>`:''}<section class="continuation-box"><strong>接下来：${route.label}</strong><p id="auto-status" class="muted">${route.auto&&state.autoContinue?'5秒后继续，可先暂停查看结果。':route.auto?'连续学习已关闭，点按钮继续。':'本页暂停自动继续，由家长决定节奏。'}</p>${route.auto&&state.autoContinue?'<button class="secondary small" id="pause-auto">暂停自动继续</button>':''}</section><div class="study-actions"><button class="primary" id="flow-next">${route.label} →</button><button class="secondary" id="flow-again">再来一轮${phaseLabels[s.phase]||'检查'}</button><button class="quiet" id="flow-back">返回自由选课</button></div><p class="footer-note">连续学习不锁课。你仍可随时从课程页选择其他内容复习。</p></section>`);
+ const ph=li!=null?(state.lessonPhases[li]||[]):[];
+ const phaseLine=li!=null?`<p class="muted">本课进度：${FOUR_PHASES.map(p=>`${phaseLabels[p]}${ph.includes(p)?'✓':'○'}`).join(' ')}（${ph.length}/4 环节）${ph.length===4?' · 本课已完成。完成不等于掌握，字母要独立读 3 次以上、跨 2 天才算掌握。':''}</p>`:'';
+ app.innerHTML=shell(`<section class="panel summary"><div class="plant">${ready?'🌳':'🌱'}</div><span class="pill">${foundationStages[s.stage].title} · ${s.stage===0?'起点检查':phaseLabels[s.phase]}</span><h1>${s.phase==='learn'?'学过了，轮到自己读':route.kind==='unit'?'这一小步完成，接着往前走':'先看看这一步的表现'}</h1><p class="muted">${advice}</p><p class="muted">本轮记录 ${valid.length} 项，跳过 ${s.results.length-valid.length} 项。口头结果来自家长判定，自动发音评分尚未接入。</p>${phaseLine}${rows.length?evidenceTable(rows):''}${weak.length?`<div class="message" style="text-align:left;margin:20px 0">建议重点练：${weak.join('、')}。<br>下一轮会优先选这些内容，并变换题型。</div>`:''}<section class="continuation-box"><strong>接下来：${route.label}</strong><p id="auto-status" class="muted">${route.auto&&state.autoContinue?'5秒后继续，可先暂停查看结果。':route.auto?'连续学习已关闭，点按钮继续。':'本页暂停自动继续，由家长决定节奏。'}</p>${route.auto&&state.autoContinue?'<button class="secondary small" id="pause-auto">暂停自动继续</button>':''}</section><div class="study-actions"><button class="primary" id="flow-next">${route.label} →</button><button class="secondary" id="flow-again">再来一轮${phaseLabels[s.phase]||'检查'}</button><button class="quiet" id="flow-back">返回自由选课</button></div><p class="footer-note">连续学习不锁课。你仍可随时从课程页选择其他内容复习。</p></section>`);
  bind();
  const launch=()=>{clearAutoContinue();if(route.kind==='complete'||route.kind==='review'){startReview();return}startFoundation(route.stage,route.phase,{lessonIndex:route.lessonIndex,focus:route.focus})};
  $('#flow-next').onclick=launch;$('#flow-again').onclick=()=>{clearAutoContinue();startFoundation(s.stage,s.phase,{lessonIndex:s.config.lessonIndex,focus:s.config.focus,...(s.config.reviewTargets?{reviewTargets:s.config.reviewTargets}:{})})};$('#flow-back').onclick=()=>nav('courses');
@@ -396,6 +448,7 @@ function finish(){
 function evidenceTable(rows){return `<div class="table-wrap"><table><thead><tr><th>能力</th><th>检查项</th><th>独立完成</th><th>提示完成</th><th>还需练习</th><th>本次表现</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.label)}</td><td>${r.total}</td><td>${r.independent}</td><td>${r.assisted}</td><td>${r.retry}</td><td>${esc(r.status)}</td></tr>`).join('')}</tbody></table></div>`}
 function progress(){const recent=state.foundationRecords.slice(-8).reverse();const rows=evaluateEvidence(state.foundationRecords.flatMap(x=>x.results||[]));return `<div class="title-row"><div><div class="eyebrow">EVIDENCE BEFORE SCORES</div><h1>基础能力档案</h1><p>听得出、自己会读、能够合音、能拼出来，分别记录。</p></div><button class="secondary small" id="export">导出学习记录 ↓</button></div><section class="panel"><h3>按能力看练习结果</h3>${rows.length?evidenceTable(rows):'<p class="muted">先做一次起点检查，了解孩子目前的基础。</p><button class="primary" data-open-stage="0">开始起点检查 →</button>'}<p class="muted">上表累计记录练习表现，不是发音分数，也不把单次正确当作掌握。</p></section><div class="section-head"><h2>最近的学—读—评—练</h2><span>最多显示最近8轮</span></div>${recent.map(r=>`<section class="panel history-entry"><div class="row"><strong>${foundationStages[r.stage]?.title||'基础练习'} · ${phaseLabels[r.phase]||'检查'}</strong><span class="muted">${new Date(r.at).toLocaleString('zh-CN')}</span></div>${r.rows.length?evidenceTable(r.rows):'<p class="muted">已听过示范，下一步自己读。</p>'}</section>`).join('')}<section class="panel" style="margin-top:20px"><h3>哪些内容值得隔天再检查？</h3><p class="muted">独立发音或合音至少有3次独立完成，且分布在2个不同日期，才显示“已有跨日证据”。这仍然不等同于专业发音评测。</p><div class="evidence-chips">${Object.entries(state.skillStats).filter(([k,v])=>k.endsWith('|speaking')||k.endsWith('|blending')||k.endsWith('|transfer')).map(([k,v])=>`<span class="pill">${esc(k.split('|')[0])} · ${v.independent>=3&&new Set(v.days).size>=2?'已有跨日证据':'继续巩固'}</span>`).join('')||'<span class="muted">等待独立读的记录</span>'}</div></section>`}
 
+if(migrateLessonPhases())save();
 render();
 
 function installHelp(){const local=!/^https?:$/.test(location.protocol);modal(`<h2>在 iPad 上使用</h2><p>${local?'当前是单文件测试版，可以体验界面和基础练习。添加主屏幕、稳定录音和离线使用需要在线应用地址。':'请用 Safari 打开当前应用，点“分享”，再选择“添加到主屏幕”。以后点主屏幕上的小芽图标即可进入。'}</p><p>第一次录音时允许麦克风访问。请在安静环境中使用，录音只留在当前练习中，不上传。</p><p>学习进度保存在当前设备。需要更换设备前，请在家长中心导出记录。</p><button class="primary" data-close>知道了</button>`)}

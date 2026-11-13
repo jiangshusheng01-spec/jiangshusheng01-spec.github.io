@@ -193,7 +193,10 @@ export function buildMainline(stats={}, skillStats={}, completed=[], lessonPhase
   if(!inScope) return false;
   return targetWeakness(k,stats,skillStats)||((v.due||0)<=Date.now());
  }).map(([k])=>k);
- dueOrWeak.sort((a,b)=>((stats[a].due||0)<=Date.now()?0:1)-((stats[b].due||0)<=Date.now()?0:1));
+ // 复习要混编：到期/薄弱优先，但同组内按最久没练的先排（轮换，不总盯着同一个）；
+ // 名额有剩时，从已学内容里按最久没练的补（不含本轮新音），让前面学过的都轮到。
+ const byOldest=(a,b)=>((stats[a]?.last||0)-(stats[b]?.last||0));
+ dueOrWeak.sort((a,b)=>(((stats[a].due||0)<=Date.now()?0:1)-((stats[b].due||0)<=Date.now()?0:1))||byOldest(a,b));
  // 拼读词：计划范围内的三字母词，优先挑未掌握的；课内合音与结尾拼读各挑一个不同的词，都尽量含新音
  const blendCandidates=planWords.filter(w=>w.length===3);
  const pickBlend=(exclude)=>blendCandidates.find(w=>w!==exclude&&(!nextSound||w.includes(nextSound))&&(()=>{const s=stats[w];return !s||s.independent<3})())||blendCandidates.find(w=>w!==exclude&&(!nextSound||w.includes(nextSound)))||blendCandidates.find(w=>w!==exclude);
@@ -209,14 +212,17 @@ export function buildMainline(stats={}, skillStats={}, completed=[], lessonPhase
  const finalBlendQ=finalBlend?make(finalBlend,'blend'):null;
  // 复习放最前面当热身，但保证新课 4 道 + 结尾拼读 1 道不被挤掉
  const reviewCount=Math.max(0,Math.min(2,planLength-newLesson.length-(finalBlendQ?1:0)));
- dueOrWeak.slice(0,reviewCount).forEach((t,i)=>{
+ const reviewPool=[...dueOrWeak];
+ const rest=[...new Set([...learnedLetters,...learnedWords])].filter(k=>k!==nextSound&&!reviewPool.includes(k)).sort(byOldest);
+ reviewPool.push(...rest);
+ reviewPool.slice(0,reviewCount).forEach((t,i)=>{
   const type=t.length===1?(i%2===0?'listen':'record'):(i%2===0?'record':'listen');
   out.push(make(t,type));
  });
  out.push(...newLesson);
  if(finalBlendQ) out.push(finalBlendQ);
  // 补足到 planLength：已学字母的听辨，薄弱优先，不重复同一道听辨题
- const fillPool=[...learnedLetters].sort((a,b)=>(targetWeakness(a,stats,skillStats)?0:1)-(targetWeakness(b,stats,skillStats)?0:1));
+ const fillPool=[...learnedLetters].sort(byOldest);
  let fi=0;
  while(out.length<planLength&&fi<fillPool.length*2){
   const t=fillPool[fi%fillPool.length];

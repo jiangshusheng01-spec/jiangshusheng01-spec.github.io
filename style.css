@@ -67,3 +67,21 @@
 .course .status.tried,.course .status.todo{color:#97a08e}
 .stage-mini small.stage-progress{color:#63815a;font-weight:700}
 @media(max-width:750px){.growth-strip{grid-template-columns:repeat(2,1fr)}}
+.family-picker{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.family-chip{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:64px;padding:10px 12px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:20px;font-weight:800;cursor:pointer}
+.family-chip small{font-size:11px;font-weight:600;color:var(--muted)}
+.family-chip.primary{background:#2e7d32;border-color:#1b5e20;color:#fff}
+.family-chip.primary small{color:#d7ecd7}
+.family-board{border-top:1px solid var(--line);padding-top:16px}
+.family-rime{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.family-rime-text{font-size:40px;font-weight:800;color:var(--ink)}
+.family-onsets{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.family-onset{width:52px;height:52px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:26px;font-weight:800;cursor:pointer}
+.family-onset.primary{background:#2e7d32;border-color:#1b5e20;color:#fff}
+.family-word{margin-bottom:16px}
+.family-word-big{display:flex;justify-content:center;gap:0;margin:8px 0}
+.family-part{border:none;background:none;font-size:64px;font-weight:800;cursor:pointer;padding:0 2px;line-height:1}
+.family-part.onset{color:#2e7d32}
+.family-part.rime{color:var(--ink)}
+.family-word-meaning{text-align:center;font-size:18px;color:var(--ink);margin:4px 0 12px}
+.family-made{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:12px}

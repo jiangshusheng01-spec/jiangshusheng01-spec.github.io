@@ -57,7 +57,17 @@ export const lessons=[
 {id:'x',title:'认识 x 的常见读法',newSounds:['x'],words:[],tag:'特别说明：/k/ 与 /s/ 两个音'},
 {id:'q',title:'认识 q 与 qu',newSounds:['q'],words:[],tag:'特别说明：q 通常与 u 一起出现'}
 ];
-export const meanings={jam:'果酱',jet:'喷气式飞机',jug:'水壶',jog:'慢跑',van:'厢式车',vet:'兽医',vat:'大桶',web:'网',wet:'湿的',win:'获胜',wig:'假发',yes:'是的',yet:'还；尚',yam:'薯蓣',zip:'拉链',zap:'快速击中',at:'在……处',sat:'坐下了',pat:'轻拍',tap:'轻拍',it:'它',sit:'坐',tip:'尖端',pit:'坑',in:'在里面',an:'一个',nap:'小睡',pan:'平底锅',pin:'别针',tin:'金属罐',tan:'棕褐色',nip:'轻咬',am:'是（与 I 连用）',mat:'垫子',map:'地图',man:'男人',dad:'爸爸',sad:'难过的',mad:'生气的',dip:'蘸一下',did:'做了',gap:'缝隙',tag:'标签',pig:'猪',dig:'挖',on:'在上面',not:'不',pot:'锅',top:'顶部',dot:'圆点',dog:'狗',cat:'猫',cap:'帽子',can:'罐子；能够',cot:'小床',cop:'警察（口语）',kit:'成套用品',kid:'小孩',net:'网',ten:'十',pen:'钢笔',pet:'宠物',get:'得到',peg:'夹子',up:'向上',cup:'杯子',cut:'切',sun:'太阳',sum:'总数',mud:'泥',pup:'小狗',rat:'老鼠',ram:'公羊',rip:'撕开',run:'跑',red:'红色',hat:'帽子',ham:'火腿',hot:'热的',hop:'单脚跳',hen:'母鸡',hug:'拥抱',bat:'球棒',bag:'包',bed:'床',big:'大的',bin:'垃圾桶',bus:'公共汽车',fan:'风扇',fat:'胖的',fin:'鱼鳍',fit:'合适',fun:'乐趣',fed:'喂过了',lap:'大腿前部',lip:'嘴唇',leg:'腿',let:'让',log:'木头',lot:'很多（用于词组）'};
+export const meanings={jam:'果酱',jet:'喷气式飞机',jug:'水壶',jog:'慢跑',van:'厢式车',vet:'兽医',vat:'大桶',web:'网',wet:'湿的',win:'获胜',wig:'假发',yes:'是的',yet:'还；尚',yam:'薯蓣',zip:'拉链',zap:'快速击中',at:'在……处',sat:'坐下了',pat:'轻拍',tap:'轻拍',it:'它',sit:'坐',tip:'尖端',pit:'坑',in:'在里面',an:'一个',nap:'小睡',pan:'平底锅',pin:'别针',tin:'金属罐',tan:'棕褐色',nip:'轻咬',am:'是（与 I 连用）',mat:'垫子',map:'地图',man:'男人',dad:'爸爸',sad:'难过的',mad:'生气的',dip:'蘸一下',did:'做了',gap:'缝隙',tag:'标签',pig:'猪',dig:'挖',on:'在上面',not:'不',pot:'锅',top:'顶部',dot:'圆点',dog:'狗',cat:'猫',cap:'帽子',can:'罐子；能够',cot:'小床',cop:'警察（口语）',kit:'成套用品',kid:'小孩',net:'网',ten:'十',pen:'钢笔',pet:'宠物',get:'得到',peg:'夹子',up:'向上',cup:'杯子',cut:'切',sun:'太阳',sum:'总数',mud:'泥',pup:'小狗',rat:'老鼠',ram:'公羊',rip:'撕开',run:'跑',red:'红色',hat:'帽子',ham:'火腿',hot:'热的',hop:'单脚跳',hen:'母鸡',hug:'拥抱',bat:'球棒',bag:'包',bed:'床',big:'大的',bin:'垃圾桶',bus:'公共汽车',fan:'风扇',fat:'胖的',fin:'鱼鳍',fit:'合适',fun:'乐趣',fed:'喂过了',lap:'大腿前部',lip:'嘴唇',leg:'腿',let:'让',log:'木头',lot:'很多（用于词组）',sap:'树液',sip:'抿一小口'};
+export const wordFamilies=[
+ {rime:'at',words:['cat','bat','hat','mat','sat','rat','fat','pat']},
+ {rime:'an',words:['can','fan','man','pan','tan','van']},
+ {rime:'ap',words:['cap','gap','map','nap','sap','tap']},
+ {rime:'og',words:['dog','log','jog']},
+ {rime:'it',words:['sit','pit','fit','kit']},
+ {rime:'et',words:['pet','net','jet','wet']},
+ {rime:'in',words:['pin','tin','win','fin']},
+ {rime:'ip',words:['lip','rip','sip','tip']},
+];
 export function knownAt(index){return [...new Set(lessons.slice(0,index+1).flatMap(x=>x.newSounds))]}
 // 自由拼读台：把格子里的字母拼成一个词；是不是真词只看词库里有没有。
 export function blendWord(slots){return slots.filter(Boolean).join('')}

@@ -140,6 +140,24 @@ export function makeFoundationPlan(stage,phase,count=12,stats={},config={}){
  let base=soundStages?[...targets,...taughtWords]:words;
  if(config.reviewTargets)base=[...new Set(config.reviewTargets)].filter(t=>[...letters,...words].includes(t));
  if(!base.length)return [];
+ // 练（practice）混编：只练一个字母时，12 道题目标全是同一个字母，孩子不用听音分辨、总点同一个答案。
+ // 把前面学过的字母（按学习顺序在 focus 之前、且孩子已接触过）也放进目标池：focus 仍占一半，
+ // 其余由前面学过的字母分摊，孩子必须听音分辨才能选对。第一个字母（无前面可混）保持不变。
+ if(soundStages&&!config.reviewTargets){
+  const letterTargets=[...new Set(base.filter(t=>t.length===1))];
+  if(letterTargets.length===1){
+   const focus=letterTargets[0],focusPos=letters.indexOf(focus);
+   const known=new Set([...(config.seen||[]),...Object.keys(stats)]);
+   const earlier=focusPos>0?letters.slice(0,focusPos).filter(l=>known.has(l)):[];
+   if(earlier.length){
+    const focusCount=Math.ceil(count/2),rest=count-focusCount;
+    const mixed=[];
+    for(let k=0;k<focusCount;k++)mixed.push(focus);
+    for(let k=0;k<rest;k++)mixed.push(earlier[k%earlier.length]);
+    base=[...mixed,...base.filter(t=>t.length>1)];
+   }
+  }
+ }
  const skillStats=config.skillStats||{};
  const weak=base.filter(t=>targetWeakness(t,stats,skillStats)||((stats[t]?.due??Infinity)<=Date.now()));
  const pool=[...weak,...shuffle(base.filter(t=>!config.reviewTargets||weak.includes(t)))];

@@ -257,7 +257,10 @@ export function groupedLessons(){return soundGroups.map(group=>({...group,items:
 // A completed page is not evidence that a learning unit was mastered.
 export function unitEvidenceReady(session,skillStats={}){
  if(session.stage===0||session.config?.reviewTargets)return false;
- if(!session.results?.length||session.results.some(r=>r.skip||r.result==='retry'||r.result==='assisted'))return false;
+ if(!session.results?.length)return false;
+ // 提示后完成/答错/跳过不卡下一课：孩子做过这轮即可往前走，没掌握的内容由到期/薄弱复习带回来；
+ // 下一课的门槛是目标内容已有独立的说+听证据（下面按 skillStats 算），不是本轮全对。
+ // （旧口径要求本轮零跳过、零答错、零提示，4 岁孩子几乎每轮都会被提示一次，导致学完一课也拿不到“下一个字母音”，只能回自由选课手动挑。）
  const focus=session.config?.focus||'all';
  const scope=foundationScope(session.stage,session.config?.lessonIndex??session.lesson,focus);
  const independent=(target,skill)=>{const s=skillStats[target+'|'+skill];return s?.lastResult==='independent'&&s.independent>=1};

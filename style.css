@@ -31,3 +31,18 @@
 .bt-sticky{position:sticky;top:0;z-index:5;background:#fff;padding:6px 0 2px}
 
 .bt-quiz-banner{padding:14px 16px;border-radius:14px;background:#e7efda;border:1px solid #96b17c;color:#3d5a37;font-size:14px;line-height:1.8;margin:6px 0 14px;text-align:center}
+
+/* 成长可见（v5.6）：课程页总览条、阶段进度、字母课卡状态 */
+.growth-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.growth-stat{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px}
+.growth-stat strong{font-size:24px;display:block}
+.growth-stat span{font-size:12px;color:var(--muted)}
+.growth-next{display:flex;gap:12px;align-items:center;justify-content:space-between;background:#e7efda;border:1px solid #96b17c;border-radius:16px;padding:16px 20px;margin:0 0 18px}
+.growth-next p{margin:4px 0 0}
+.course .status.done{color:#367d66;font-weight:800}
+.course .status.due{color:#9a6b1f;font-weight:800}
+.course .status.weak{color:#ad7453;font-weight:800}
+.course .status.learned{color:#63815a;font-weight:700}
+.course .status.tried,.course .status.todo{color:#97a08e}
+.stage-mini small.stage-progress{color:#63815a;font-weight:700}
+@media(max-width:750px){.growth-strip{grid-template-columns:repeat(2,1fr)}}

@@ -163,6 +163,55 @@ export function makeFoundationPlan(stage,phase,count=12,stats={},config={}){
  }
  return out;
 }
+// 今日学习计划（只覆盖第一组 s、a、t、p、i、n；第 0–6 课）。
+// 新用户：只出第 1 个音 s 的 2 道题（认识 + 听辨）。
+// 有记录：混 1 个新音（听辨引入）+ 最多 2 个到期/薄弱复习 + 1 个简单合音 + 补足到 planLength。
+// 出题与干扰项只用 knownAt(6)/wordsAt(6)，不越过家长设定的学习起点。
+export function buildTodayPlan(stats={}, skillStats={}, completed=[], lessonPhases={}, planLength=5, lesson=0){
+ // 已学范围：家长设定的当前学习起点（state.lesson）之内的字母与词；新音是下一个未完成的第一组课的新音。
+ // 计划的目标与干扰项只出自“已学范围 + 本轮新音”，不越过起点去推后面的音。
+ const learnedLetters=knownAt(lesson), learnedWords=wordsAt(lesson);
+ const firstGroupLessons=[0,1,2,4,5,6];
+ let nextSound=null;
+ for(const i of firstGroupLessons){
+  if(!(completed||[]).includes(i)){
+   const l=lessons[i];
+   if(l.newSounds&&l.newSounds.length){nextSound=l.newSounds[0];break;}
+  }
+ }
+ const planLetters=[...new Set([...learnedLetters,...(nextSound?[nextSound]:[])])];
+ const planWords=[...new Set([...learnedWords,...wordsAt(6).filter(w=>[...w].every(c=>planLetters.includes(c)))])];
+ const make=(target,type,extra={})=>({target,type,skill:taskSkill({target,type}),options:taskOptions(target,target.length===1?planLetters:planWords.filter(w=>w.length===target.length)),...extra});
+ const hasRecords=(completed&&completed.length>0)||Object.keys(stats||{}).length>0;
+ if(!hasRecords) return [make('s','teach'),make('s','listen')];
+ // 到期或薄弱的复习项（只在已学范围内），到期优先
+ const dueOrWeak=Object.entries(stats||{}).filter(([k,v])=>{
+  if(!k) return false;
+  const inScope=k.length===1?learnedLetters.includes(k):learnedWords.includes(k);
+  if(!inScope) return false;
+  return targetWeakness(k,stats,skillStats)||((v.due||0)<=Date.now());
+ }).map(([k])=>k);
+ dueOrWeak.sort((a,b)=>((stats[a].due||0)<=Date.now()?0:1)-((stats[b].due||0)<=Date.now()?0:1));
+ // 简单合音：计划范围内的三字母词（字母全在已学+本轮新音里），优先挑未掌握的
+ const blendCandidates=planWords.filter(w=>w.length===3);
+ const blendWord=blendCandidates.find(w=>{const s=stats[w];return !s||s.independent<3})||blendCandidates[0];
+ const out=[];
+ if(nextSound) out.push(make(nextSound,'listen'));
+ dueOrWeak.slice(0,2).forEach((t,i)=>{
+  const type=t.length===1?(i%2===0?'listen':'record'):(i%2===0?'record':'listen');
+  out.push(make(t,type));
+ });
+ if(blendWord) out.push(make(blendWord,'blend'));
+ // 补足到 planLength：已学字母的听辨，薄弱优先，不重复同一道听辨题
+ const fillPool=[...learnedLetters].sort((a,b)=>(targetWeakness(a,stats,skillStats)?0:1)-(targetWeakness(b,stats,skillStats)?0:1));
+ let fi=0;
+ while(out.length<planLength&&fi<fillPool.length*2){
+  const t=fillPool[fi%fillPool.length];
+  if(!out.some(q=>q.target===t&&q.type==='listen')) out.push(make(t,'listen'));
+  fi++;
+ }
+ return out.slice(0,planLength);
+}
 export function evaluateEvidence(records){
  const rows=Object.entries(skillNames).map(([skill,label])=>{const group=records.filter(r=>r.skill===skill&&!r.skip),total=group.length,independent=group.filter(r=>r.result==='independent').length,assisted=group.filter(r=>r.result==='assisted').length;return {skill,label,total,independent,assisted,retry:total-independent-assisted,status:!total?'尚未检查':independent===total?'本次独立完成':independent+assisted===total?'提示后能完成':'建议专项练习'}});
  return rows.filter(r=>r.total);

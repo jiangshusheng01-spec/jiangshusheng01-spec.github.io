@@ -167,9 +167,10 @@ export function makeFoundationPlan(stage,phase,count=12,stats={},config={}){
 // 新用户：只出第 1 个音 s 的 2 道题（认识 + 听辨）。
 // 有记录：混 1 个新音（听辨引入）+ 最多 2 个到期/薄弱复习 + 1 个简单合音 + 补足到 planLength。
 // 出题与干扰项只用 knownAt(6)/wordsAt(6)，不越过家长设定的学习起点。
-export function buildTodayPlan(stats={}, skillStats={}, completed=[], lessonPhases={}, planLength=5, lesson=0){
+export function buildMainline(stats={}, skillStats={}, completed=[], lessonPhases={}, planLength=7, lesson=0){
+ // 主线：复习旧知识 → 学一个新内容（学/读/评/练四环节收紧成 4 道）→ 用新旧知识拼读 → 结束并记录（总结页）。
  // 已学范围：家长设定的当前学习起点（state.lesson）之内的字母与词，再加本轮新音。
- // v5.15 只覆盖第一组：起点超过第 6 课也只算到第 6 课，不越过第一组去推后面的音。
+ // v5.16 只覆盖第一组：起点超过第 6 课也只算到第 6 课，不越过第一组去推后面的音。
  const scopeLesson=Math.min(lesson,6);
  const learnedLetters=knownAt(scopeLesson), learnedWords=wordsAt(scopeLesson);
  const firstGroupLessons=[0,1,2,4,5,6];
@@ -193,18 +194,27 @@ export function buildTodayPlan(stats={}, skillStats={}, completed=[], lessonPhas
   return targetWeakness(k,stats,skillStats)||((v.due||0)<=Date.now());
  }).map(([k])=>k);
  dueOrWeak.sort((a,b)=>((stats[a].due||0)<=Date.now()?0:1)-((stats[b].due||0)<=Date.now()?0:1));
- // 简单合音：计划范围内的三字母词（字母全在已学+本轮新音里），优先挑未掌握的
+ // 拼读词：计划范围内的三字母词，优先挑未掌握的；课内合音与结尾拼读各挑一个不同的词，都尽量含新音
  const blendCandidates=planWords.filter(w=>w.length===3);
- const blendWord=blendCandidates.find(w=>{const s=stats[w];return !s||s.independent<3})||blendCandidates[0];
+ const pickBlend=(exclude)=>blendCandidates.find(w=>w!==exclude&&(!nextSound||w.includes(nextSound))&&(()=>{const s=stats[w];return !s||s.independent<3})())||blendCandidates.find(w=>w!==exclude&&(!nextSound||w.includes(nextSound)))||blendCandidates.find(w=>w!==exclude);
+ const lessonBlend=nextSound?pickBlend(null):null;
+ const finalBlend=pickBlend(lessonBlend);
  const out=[];
- // 新音先认识再听辨：teach 引入（看字母、听音），再用 listen 检查；不用 listen 直接考一个没学过的音。
- if(nextSound){ out.push(make(nextSound,'teach')); out.push(make(nextSound,'listen')); }
- // 简单合音紧跟新音：刚学的音马上用进词里（如刚学 p 就拼 pat）。
- if(blendWord) out.push(make(blendWord,'blend'));
- dueOrWeak.slice(0,2).forEach((t,i)=>{
+ // 新课四环节（固定 4 道）：认识新音（学）→ 听辨（读）→ 跟读（评）→ 合音（练）
+ const newLesson=[];
+ if(nextSound){
+  newLesson.push(make(nextSound,'teach'),make(nextSound,'listen'),make(nextSound,'record'));
+  if(lessonBlend) newLesson.push(make(lessonBlend,'blend'));
+ }
+ const finalBlendQ=finalBlend?make(finalBlend,'blend'):null;
+ // 复习放最前面当热身，但保证新课 4 道 + 结尾拼读 1 道不被挤掉
+ const reviewCount=Math.max(0,Math.min(2,planLength-newLesson.length-(finalBlendQ?1:0)));
+ dueOrWeak.slice(0,reviewCount).forEach((t,i)=>{
   const type=t.length===1?(i%2===0?'listen':'record'):(i%2===0?'record':'listen');
   out.push(make(t,type));
  });
+ out.push(...newLesson);
+ if(finalBlendQ) out.push(finalBlendQ);
  // 补足到 planLength：已学字母的听辨，薄弱优先，不重复同一道听辨题
  const fillPool=[...learnedLetters].sort((a,b)=>(targetWeakness(a,stats,skillStats)?0:1)-(targetWeakness(b,stats,skillStats)?0:1));
  let fi=0;

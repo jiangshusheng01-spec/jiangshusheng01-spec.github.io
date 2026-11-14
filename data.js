@@ -262,6 +262,17 @@ export function targetWeakness(target,stats={},skillStats={}){
  const s=stats[target];return s?.lastResult&&s.lastResult!=='independent'?{skill:s.lastSkill||'',difficulty:s.lastIssue||''}:null;
 }
 export function requiresQuestionAudio(task){return ['listen','spell','namekind','oralblend','firstsound'].includes(task.type)}
+// 听音题的整词示范播放序列：单词录音太短（in 只有 0.49 秒、it/at/am 同样不到 0.5 秒），只播一遍 4 岁孩子根本听不清是哪个词。
+// 题目里播词一律：整词慢速（0.85 倍）播两遍；两字母短词再加分音（慢速字母音）+ 整词一遍，孩子能听清是哪个词、开头是哪个音。
+// 序列是纯数据，播放由 app.js 的 playWordPrompt 按顺序执行；中途切题就停，不继续播后面的。
+export function wordPromptSequence(word){
+ const steps=[{kind:'word',word,rate:0.85},{kind:'word',word,rate:0.85}];
+ if(word.length===2){
+  for(const ch of word)steps.push({kind:'letter',letter:ch,slow:true});
+  steps.push({kind:'word',word,rate:0.85});
+ }
+ return steps;
+}
 export function recordingNeedsHelp({priorHelp=false,hasRecording=false,modelWasHeard=false,restarting=false}){return priorHelp||(restarting?modelWasHeard:!hasRecording)}
 
 // Reference organisation is distinct from the sequence used to learn blending.
